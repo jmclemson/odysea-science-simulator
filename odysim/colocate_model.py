@@ -50,23 +50,28 @@ class GriddedModel:
             GriddedModel obect
 
         """
+        #Initializes instance of griddedModel object by loading model data from given paths
 
 
+        # Create paths for model data variables
         u_search = os.path.join(model_folder, u_folder)
         v_search = os.path.join(model_folder, v_folder)
         tau_x_search = os.path.join(model_folder, tau_x_folder)
         tau_y_search = os.path.join(model_folder, tau_y_folder)
-        
+
+        # Create an array of file names for each data variable
         u_files = np.sort(glob.glob(u_search + '/*.nc'))[0:n_files]
         v_files = np.sort(glob.glob(v_search + '/*.nc'))[0:n_files]
         tau_x_files = np.sort(glob.glob(tau_x_search + '/*.nc'))[0:n_files]
         tau_y_files = np.sort(glob.glob(tau_y_search + '/*.nc'))[0:n_files]
 
+        # Load data variable files -> Why datasets and not dataArrays since each data variable is stored separately?
         self.U = xr.open_mfdataset(u_files,parallel=True,preprocess=preprocess)
         self.V = xr.open_mfdataset(v_files,parallel=True,preprocess=preprocess)
         self.TX = xr.open_mfdataset(tau_x_files,parallel=True,preprocess=preprocess)
         self.TY = xr.open_mfdataset(tau_y_files,parallel=True,preprocess=preprocess)
 
+        #Assign names to instance variables
         self.u_varname = u_varname
         self.v_varname = v_varname
         self.tau_x_varname = tau_x_varname
@@ -95,11 +100,13 @@ class GriddedModel:
            ty: colocated model v wind stress.
 
         """
+        # Exports numpy arrays containing model data variables, interpolated to line up with input lat, lon, and time arrays
 
         
         if len(times) == 0:
             return [],[]
-            
+        # Creates new dataArrays of data variables interpolated onto lat, lon, and time coordinate points given in function
+        # Why is the dimension the same for all 3?    
         ds_u =  self.U.interp(time=xr.DataArray(times.flatten(), dims='z'),
                             lat=xr.DataArray(lats.flatten(), dims='z'),
                             lon=xr.DataArray(lons.flatten(), dims='z'),
@@ -121,6 +128,10 @@ class GriddedModel:
                             method='linear')
         
 
+        # Reshape interpolated data variables to match shape of input parameter array lats, export as np array
+        # Why necessary to reshape? Shouldn't interpolation reshape automatically?
+        # Why reshape to dimension of lats, as opposed to lons or time arrays?
+        # Why export as numpy array instead of dataArray or dataset, without updating instance variables?
         u=np.reshape(ds_u[self.u_varname].values,np.shape(lats))
         v=np.reshape(ds_v[self.v_varname].values,np.shape(lats))
         tx=np.reshape(ds_tx[self.tau_x_varname].values,np.shape(lats))
@@ -143,10 +154,14 @@ class GriddedModel:
 
         """
         
+        # Create 1d numpy arrays of lats, lons, and times from orbit dataSet
+        # Why flatten -> Shouldn't they be 1D already? Safety precaution?
         lats  = orbit['lat'].values.flatten()
         lons  = orbit['lon'].values.flatten()
         times = orbit['sample_time'].values.flatten()
 
+        # Create new dataSet from instance variables, interpolated to match orbital time, lat, and lon coordinate points
+        # Why pull out time, lats, and lons as numpy arrays from dataSet only to make them back into dataArrays?
         ds_u =  self.U.interp(time=xr.DataArray(times, dims='z'),
                             lat=xr.DataArray(lats, dims='z'),
                             lon=xr.DataArray(lons, dims='z'),
@@ -158,9 +173,11 @@ class GriddedModel:
                             method='linear')
 
 
+        # Create numpy arrays from interpolated dataArrays, with shape matched to latitude data from orbits dataSet
         u_interp = np.reshape(ds_u[self.u_varname].values,np.shape(orbit['lat'].values))
         v_interp = np.reshape(ds_v[self.v_varname].values,np.shape(orbit['lat'].values))
 
+        # Modify orbit object and return it
         orbit = orbit.assign({'u_model': (['along_track', 'cross_track'], u_interp),
                               'v_model': (['along_track', 'cross_track'], v_interp)})
 

@@ -18,30 +18,30 @@ def splineFactory(x,y,smoothing=.1):
     return spl
 
 #@jit(nopython=True)
-def signedAngleDiff(ang1,ang2):
+def signedAngleDiff(ang1,ang2): #Return array that is difference between angles in arrays ang1 and ang2
 
     ang1 = np.asarray(ang1)
     ang2 = np.asarray(ang2)
-    ang11 = normalizeTo360(ang1)
-    ang22 = normalizeTo360(ang2)
+    ang11 = normalizeTo360(ang1) #Normalize arrays of angles to -360 - 360 range
+    ang22 = normalizeTo360(ang2) # '''
 
     # ang11 = np.array(ang11)
     # ang21 = np.array(ang22)
 
     result = ang22 - ang11
 
-    resultF = result.flatten()
+    resultF = result.flatten() #Flatten the array for itteration in loop
 
-    for ii in range(resultF.shape[0]):
+    for ii in range(resultF.shape[0]): # For each angle in array "resultF", convert angle to -180 - 180 notation
         if resultF[ii] > 180:
             resultF[ii] = resultF[ii] - 360
         if resultF[ii] < -180:
             resultF[ii] = 360 + resultF[ii]
 
-    result = resultF.reshape(np.shape(result))
+    result = resultF.reshape(np.shape(result)) #Reshape array to match old shape
 
 
-    return result
+    return result #Return array of angles in original shape with difference between angles
 
 def computeEncoderByXT(cross_track):
     """
@@ -115,7 +115,7 @@ def normalizeTo180Jit(angle):
     return angle
 
 
-def normalizeTo360(angle):
+def normalizeTo360(angle): # Normalize angle of any degree (-inf - inf) to equivalent 360 degree angle (-360 - 360)
 
     #angle2 = np.array(angle)
 
