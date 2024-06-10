@@ -250,7 +250,7 @@ def addTimeDim(ds):
         ds (xarray dataset): Original dataset with added time dimension.
 
     """
-    
+    # Reads time stamp from file name, converts it to a dimensional coordinate of the dataSet of interest
     
     ds = ds.isel(time=0)
     fn = os.path.basename(ds.encoding["source"])
@@ -277,6 +277,7 @@ def addTimeDimCoarse(ds):
         ds (xarray dataset): Original dataset with added time dimension.
 
     """
+    # As above, but for different file-naming format
     
     fn = os.path.basename(ds.encoding["source"])
     time_str = fn.split('.')[0].split('_')[-1]

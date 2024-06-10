@@ -5,6 +5,7 @@ import numpy as np
 #@jit(nopython=True,cache=True)
 def eastRad(lat):
     """radius of curvature in the east direction (lat in radians)"""
+    # Assumes Earth is perfect ellipsoid -> only dependent on latitude, not longitude
     #The Earth's constants
     SEMIMAJOR_AXIS = 6378137. # in meters
     ECCENTRICITY_SQ = 0.00669437999015
@@ -23,11 +24,14 @@ def northRad(lat):
 def localRad(hdg, lat):
     """Local radius of curvature along heading
     (heading and latitude in radians)"""
+    # Like directional derivative off of gradient
+    # Uses eastRad and northRad to get radii in each coordinate directions
     return (eastRad(lat)*northRad(lat)/(eastRad(lat)*np.cos(hdg)**2 + 
                                         northRad(lat)*np.sin(hdg)**2))
 
 
 #@jit(nopython=True,cache=True)
+# What is peg-point?
 def getPegPointVector(peg_lat,peg_lon):
     """Get vector from WGS-84 center to peg point in
     geocentric coordinates."""
@@ -55,11 +59,13 @@ def getPegPointVector(peg_lat,peg_lon):
 def getXYZ_to_GEO_affine(peg_lat,peg_lon,peg_hdg,peg_localRadius):
     """Function to compute the transformation matrix
     form xyz to geocentric"""
+    # What are xyz and geocentric coordinates?
 
     m = np.zeros((3,3),np.float64)
     up = np.zeros(3,np.float64) #local up vector in geocentric coordinates */
 
     # Calculate useful constants
+    # Why semicolons? Originally written in different language? -> jit?
     clt = np.cos(peg_lat);
     slt = np.sin(peg_lat);
     clo = np.cos(peg_lon);

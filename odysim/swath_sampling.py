@@ -13,6 +13,8 @@ from odysim import utils
 
     
 def splineFactory(x,y,smoothing=.1):
+    # Creates a 3rd degree spline to match x and y data
+    # x and y are each numpy arrays
     spl = UnivariateSpline(x, y)
     spl.set_smoothing_factor(.1)
     return spl
@@ -24,11 +26,12 @@ def getBearing(latitude,longitude):
     X = np.zeros(np.shape(latitude))
     Y = np.zeros(np.shape(latitude))
 
-    X[d::] = np.cos(latitude[d::]) * np.sin(longitude[d::]-longitude[0:-d])
+    # Vectorized calculation setting X[1:] and Y[1:] equal to ??
+    X[d::] = np.cos(latitude[d::]) * np.sin(longitude[d::]-longitude[0:-d]) # This seems like this should throw an indexing error (1:end vs 0:-1)
     Y[d::] = np.cos(latitude[0:-d]) * np.sin(latitude[d::]) - np.sin(latitude[0:-d]) * np.cos(latitude[d::]) * np.cos(longitude[d::]-longitude[0:-d])
 
     t = np.arctan2(X,Y)
-
+    # Returns array of angles
     return t
 
 def ecef_to_llh(x,y,z):
@@ -110,7 +113,7 @@ class WGS84:
         return (WGS84.eastRad(lat)*WGS84.northRad(lat)/
                 (WGS84.eastRad(lat)*np.cos(azimuth)**2 +
                  WGS84.northRad(lat)*np.sin(azimuth)**2))
-
+    # Same functions as in coordinates.py
 
 
 class OdyseaSwath:
@@ -127,7 +130,7 @@ class OdyseaSwath:
            OdyseaSwath object
 
         """
-                
+        # Find the default orbit and configuration files        
         if orbit_fname == 'orbit_out_2020_2023_height590km.npz': 
             # the default fname needs the relative path to the installed dir
             from odysim import orbit_files
@@ -139,7 +142,7 @@ class OdyseaSwath:
             config_fname = os.path.join(import_resources.files(odysim),config_fname)
             
         
-            
+        # Sets up instance variables    
         self.loadOrbitXYZ(fn=orbit_fname)
         self.config_fname=config_fname
     
@@ -299,9 +302,11 @@ class OdyseaSwath:
         return ds
     
     def loadOrbitXYZ(self,fn='orbit_out_2020_2023_height590km.npz'):
-        
+        # Loads a numpy array from the file, defines instance variables
+        # npz fie is dictionary-like series of numpy arrays indexed by keys, with lazy loading of specific arrays
         orbit_out = np.load(fn)
         
+        # All are large 1D numpy arrays
         self.orbit_cut_points = orbit_out['orbit_cut_points']
         self.time_stamp_vector_coarse = orbit_out['time_stamp_vector']
         self.coarse_x = orbit_out['coarse_x']
@@ -329,16 +334,18 @@ class OdyseaSwath:
         start_time = start_time.timestamp()
         end_time = end_time.timestamp()
 
+        # Creates array containing indices of time_stamp_vector_coarse cooresponding to elements of the array within the start and end times
         start_index = np.where((self.time_stamp_vector_coarse > start_time) & (self.time_stamp_vector_coarse < end_time))[0][0]
         end_index = np.where((self.time_stamp_vector_coarse > start_time) & (self.time_stamp_vector_coarse < end_time))[0][-1]
         
+        # Slices valid_orbit_cut_points based on allowed time indices
         valid_orbit_cut_points = self.orbit_cut_points[(self.orbit_cut_points > start_index) & (self.orbit_cut_points < end_index)]
         
-        for idx_orbit,orbit_start in enumerate(valid_orbit_cut_points):
+        for idx_orbit,orbit_start in enumerate(valid_orbit_cut_points): # Itterates over valid_orbit_cut_points, pulling out index and value
 
             start_idx = orbit_start
 
-            if (idx_orbit + 1 >= len(valid_orbit_cut_points)):
+            if (idx_orbit + 1 >= len(valid_orbit_cut_points)): # Don't act on final entry of valid_orbit_cut_points (would break end_idx)
                 break #end_idx = len(self.time_stamp_vector_coarse)
             else:
                 end_idx = valid_orbit_cut_points[idx_orbit+1]
@@ -348,7 +355,7 @@ class OdyseaSwath:
                                     self.coarse_z[start_idx:end_idx],
                                     self.time_stamp_vector_coarse[start_idx:end_idx],
                                     self.coarse_s[start_idx:end_idx],
-                                    write=False)
+                                    write=False) # Values of valid_orbit_cut_points are indexes of other parameters
 
             if set_azimuth:
                 ds = self.setAzimuth(ds)
