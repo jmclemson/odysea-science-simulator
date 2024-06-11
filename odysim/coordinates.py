@@ -31,7 +31,7 @@ def localRad(hdg, lat):
 
 
 #@jit(nopython=True,cache=True)
-# What is peg-point?
+# What is peg-point? -> point of interest?
 def getPegPointVector(peg_lat,peg_lon):
     """Get vector from WGS-84 center to peg point in
     geocentric coordinates."""
@@ -48,7 +48,7 @@ def getPegPointVector(peg_lat,peg_lon):
     # east radius of curvature */
     eastRadius = eastRad(peg_lat);
 
-    # displacement vector */
+    # displacement vector */ -> from geocentric origin
     p[0] = eastRadius*clt*clo;
     p[1] = eastRadius*clt*slo;
     p[2] = eastRadius*(1. - ECCENTRICITY_SQ)*slt;
@@ -59,7 +59,7 @@ def getPegPointVector(peg_lat,peg_lon):
 def getXYZ_to_GEO_affine(peg_lat,peg_lon,peg_hdg,peg_localRadius):
     """Function to compute the transformation matrix
     form xyz to geocentric"""
-    # What are xyz and geocentric coordinates?
+    # What are xyz coordinates
 
     m = np.zeros((3,3),np.float64)
     up = np.zeros(3,np.float64) #local up vector in geocentric coordinates */

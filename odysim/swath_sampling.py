@@ -1,7 +1,7 @@
 import xarray as xr
 import numpy as np
 import pandas as pd
-import yaml
+import yaml # Human readable data serialization language
 from scipy.interpolate import UnivariateSpline
 import datetime
 from pathlib import Path
@@ -147,37 +147,43 @@ class OdyseaSwath:
         self.config_fname=config_fname
     
     
-    def getOrbitSwath(self,orbit_x,orbit_y,orbit_z,orbit_time_stamp,orbit_s,write=False):
+    def getOrbitSwath(self,orbit_x,orbit_y,orbit_z,orbit_time_stamp,orbit_s,write=False): # Write variable currently unused
 
-        time_stamp_vector = orbit_time_stamp
+        time_stamp_vector = orbit_time_stamp # Translate back into same variable names as keys from orbit npz files
         coarse_x = orbit_x
         coarse_y = orbit_y
         coarse_z = orbit_z
         coarse_s = orbit_s
 
 
-        with open(self.config_fname, 'r') as ymlfile:
-            cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
+        with open(self.config_fname, 'r') as ymlfile: # set config file name as ymlfile
+            cfg = yaml.load(ymlfile, Loader=yaml.FullLoader) # load config file using yaml
+            # wacm_sampling_config.py config file contains constant parameters to describe ODYSEA swath size and resolution
             
-        swath_width = cfg['SWATH_WIDTH']
+        swath_width = cfg['SWATH_WIDTH'] # Pull swath width from config file
 
+        # Create numpy array equal to swath width, centered at 0, with entries spaced by swath resolution (# = number of sampling bins in 'across track' direction)
         c_bins = np.arange(-swath_width/2,swath_width/2,cfg['IN_SWATH_RESOLUTION'])
+        # Vectorized calculation returning boolean array for where data is good and where it must be blanked (edges and center)
         swath_blanking = (np.abs(c_bins) > np.nanmax(c_bins) - swath_width*cfg['SWATH_EDGE_GAP']) | (np.abs(c_bins) < swath_width*cfg['SWATH_CENTER_GAP'])
 
         h = np.zeros(np.shape(c_bins))
 
+        # Create 1D array of starting coordinates for each 'along track' sampling bin
         s_pegs = np.arange(0,cfg['N_ALONG_TRACK'])*cfg['IN_SWATH_RESOLUTION'] # 8000 bins, 5km each.
 
-        ns,nc = len(s_pegs),len(c_bins)
+        ns,nc = len(s_pegs),len(c_bins) # number of sampling bins along track and across track
 
 
         platform_s = coarse_s
-        platform_s = platform_s - np.nanmin(platform_s)
+        platform_s = platform_s - np.nanmin(platform_s) # Subtract the minimum value of platform_s array from the array
 
         #print(np.nanmax(platform_s))
         
+        #Initialize 4 nan 2D arrays of dimensions equal to the number of along track and across track bins
         slat,slon,sh,s_time = [np.nan*np.zeros((ns,nc)) for _ in range(0,4)]
 
+        #Create arrays based on 3rd degree splines of coarse position data by plugging in the s_pegs (along track bin locateions) array
         pf_x_smoothed = splineFactory(platform_s,coarse_x)(s_pegs)
         pf_y_smoothed = splineFactory(platform_s,coarse_y)(s_pegs)
         pf_z_smoothed = splineFactory(platform_s,coarse_z)(s_pegs)
