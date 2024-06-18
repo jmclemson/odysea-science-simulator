@@ -183,40 +183,53 @@ class OdyseaSwath:
         #Initialize 4 nan 2D arrays of dimensions equal to the number of along track and across track bins
         slat,slon,sh,s_time = [np.nan*np.zeros((ns,nc)) for _ in range(0,4)]
 
-        #Create arrays based on 3rd degree splines of coarse position data by plugging in the s_pegs (along track bin locateions) array
+        # Create arrays based on 3rd degree splines of coarse position data by plugging in the s_pegs (along track bin locateions) array
+        # Find xyz positions for each along track swath in the form of a 1D array
         pf_x_smoothed = splineFactory(platform_s,coarse_x)(s_pegs)
         pf_y_smoothed = splineFactory(platform_s,coarse_y)(s_pegs)
         pf_z_smoothed = splineFactory(platform_s,coarse_z)(s_pegs)
 
         pf_time_smoothed = splineFactory(platform_s,time_stamp_vector,smoothing=0)(s_pegs)
 
+        # Convert paramatized x y z data into lat, lon, height data + directional bearing
         pf_lat_smoothed,pf_lon_smoothed,pf_h_smoothed = ecef_to_llh(pf_x_smoothed,pf_y_smoothed,pf_z_smoothed)
         pf_bearing_smoothed = getBearing(pf_lat_smoothed,pf_lon_smoothed)
 
+        # Loop over each index and value of the s_pegs list
+        # Loop fills out slat, slon, stime, sh 2D arrays for the correct values of each sampling "bin"
         for idx_s,s in enumerate(s_pegs):
 
+            # Use s_pegs index to pull out related parameters for lat, lon, time, heading, local radius
             peg_lat = pf_lat_smoothed[idx_s] 
             peg_lon = pf_lon_smoothed[idx_s]
             peg_hdg = pf_bearing_smoothed[idx_s]
             peg_time = pf_time_smoothed[idx_s]
             peg_localRadius = WGS84.localRad(peg_hdg,peg_lat) 
 
+            # Set the values of slat, slon, and sh for the specific along track index and all
+            # across track values to their appropriate numbers based on a conversion from along and across
+            # track coordinate system to lat-lon coordinate system
             slat[idx_s,:], slon[idx_s,:], sh[idx_s,:] = sch_array_to_llh_array(0*c_bins.flatten(),c_bins.flatten(),
                                                                                h.flatten(),peg_lat,peg_lon,peg_hdg,peg_localRadius)
             s_time[idx_s,:] = peg_time
 
+        # Creates a mask to filter out infinite and nan values in slat, slon, and time (not used)
         mask = np.isfinite(slat+slon+s_time) 
 
 
+        # Assigns new variable names to slat, slon, s_time (sh forgotten) -> Perhaps where mask is intended to be used?
         sample_time_track=s_time
         sample_lat_track=slat
         sample_lon_track=slon
 
 
+        # Initialize dataset ds
         ds = xr.Dataset() 
 
+        # along_track_sz = number of bins in along track direction (s_peg) and cross_track_sz = number of bins in across track direction (c_bin)
         along_track_sz,cross_track_sz = np.shape(sample_time_track)
 
+        # Replace any nan values in sample_time_track with 0
         sample_time_track[np.isnan(sample_time_track)] = 0
 
         
@@ -227,6 +240,8 @@ class OdyseaSwath:
                     "swath_blanking": {"dtype": "int16", "zlib": True,'complevel': 3,'_FillValue':-9999},
                    }
 
+        # Assign new coordinate values and dimensions matching indexes of s_pegs and c_bins (along and across track bins)
+        # Why the bracketed string in front? -> Doesn't seem to affect ds readout
         ds = ds.assign_coords(coords={'along_track': (['along_track'], np.arange(0,along_track_sz)),
                                       'cross_track': (['cross_track'],  np.arange(0,cross_track_sz))})   
 
@@ -235,13 +250,17 @@ class OdyseaSwath:
 #         sample_lat_track  = np.moveaxis(sample_lat_track, -1,0)
 #         sample_lon_track  = np.moveaxis(sample_lon_track, -1,0)
 
+        # Make a mask to filter out nan values (like "mask" from before -> why both?)
         nanmask = np.isnan(sample_time_track + sample_lat_track + sample_lon_track)
 
+        # Sets any nan values to -9999 -> Why that number??
+        # Any nan values in sample_time_track set to 0 in line 233
         sample_time_track[nanmask] = -9999
         sample_lat_track[nanmask]  = -9999
         sample_lon_track[nanmask]  = -9999
         
 
+        # Convert time_stamps from sample_time_track to time deltas relative to 1970-01-01, restore shape of sample_time_track (along track by across track)
         sample_time_track_dt = [np.datetime64('1970-01-01') + np.timedelta64(int(stt*1000),'ms') for stt in sample_time_track.flatten()]
         sample_time_track_dt = np.reshape(sample_time_track_dt,np.shape(sample_time_track)).astype('datetime64[s]')
                                           
