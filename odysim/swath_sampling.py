@@ -264,6 +264,7 @@ class OdyseaSwath:
         sample_time_track_dt = [np.datetime64('1970-01-01') + np.timedelta64(int(stt*1000),'ms') for stt in sample_time_track.flatten()]
         sample_time_track_dt = np.reshape(sample_time_track_dt,np.shape(sample_time_track)).astype('datetime64[s]')
                                           
+        # Create sample time, latitude, longitude, and swath blanking variables based on along_track and across track bin coordinates (s_pegs and c_bins)
         ds = ds.assign({'sample_time': ([ 'along_track', 'cross_track'], np.array(sample_time_track_dt)),
                        'lat': (['along_track', 'cross_track'], np.array(sample_lat_track,dtype='float32')),
                        'lon': (['along_track', 'cross_track'], np.array(sample_lon_track,dtype='float32')),
@@ -272,6 +273,7 @@ class OdyseaSwath:
         ds['swath_blanking'].attrs['comment'] = 'Flagged in areas of the swath that are expected to have unacceptable error performance.'
 
 
+        # Add attributes to ds
         ds['lat'].attrs['valid_min'] = -90.00
         ds['lat'].attrs['valid_max'] = 90.00
         ds['lat'].attrs['long_name'] = 'latitude'
@@ -403,9 +405,12 @@ class OdyseaSwath:
 
         """
    
+        # cross_track = indexes of cross track bins, centered at middle bin
         cross_track = orbit.cross_track.values - np.median(orbit.cross_track.values)
         
+        # Calculate angle (unsure what)
         encoder_fore,encoder_aft = utils.computeEncoderByXT(cross_track)
+        # Change shape to match latitude values (bins along by bins across)
         encoder_fore = np.broadcast_to(encoder_fore, np.shape(orbit.lat.values))
         encoder_aft = np.broadcast_to(encoder_aft, np.shape(orbit.lat.values))
 
@@ -419,7 +424,7 @@ class OdyseaSwath:
         azimuth_fore =  utils.normalizeTo180((encoder_fore + bearing[:,np.newaxis]))
         azimuth_aft =  utils.normalizeTo180((encoder_aft + bearing[:,np.newaxis]))
 
-
+        # Add encoder, azimuth, and bearing data to orbit dataset as variables based on dimensions across track and along track
         orbit = orbit.assign({'encoder_fore': (['along_track', 'cross_track'], encoder_fore),
                               'encoder_aft' : (['along_track', 'cross_track'], encoder_aft)})
         
