@@ -23,14 +23,20 @@ class OdyseaErrors:
            OdyseaErrors object
 
         """
+        # Init sets up instance variables, reads data from a file, and interpolates that data onto a coordinate grid
+        # to create a new instance variable that is a continuous approximation function between the coordinate parameters and the data
 
         # These ranges are defined by the size of the vradial_lut at creation.
+        # Why fixed -> Automatically read from uncertainty_tables?
         wind_dir_range = np.arange(-195,195,5)  
         wind_speed_range = np.arange(0,20,.1)
         encoder_angle_range = np.arange(-190,190,5)
 
+        # Create 3 3D coordinate matricies (arrays) that when combined, can be used as a coordinate grid system
         self.wind_dir_mesh,self.wind_speed_mesh,self.encoder_angle_mesh = np.meshgrid(wind_dir_range,wind_speed_range,encoder_angle_range)
-        self.vradial_lut = np.load(lut_fn)['sigma_vr']
+        self.vradial_lut = np.load(lut_fn)['sigma_vr'] # lut_fn has one array with key "sigma_vr" and shape (200, 78, 76)
+        # After mapping our vradial_lut data to the coordinate grid, we interpolate to create a continuous function
+        # which can give the vradial_lut for any wind_dir, wind_speed, and encoder_angle
         self.vradial_interpolator = RegularGridInterpolator((wind_speed_range, wind_dir_range, encoder_angle_range), self.vradial_lut)
             
     
@@ -51,9 +57,11 @@ class OdyseaErrors:
 
         """
 
+        # Finds azimuth relative to wind dir, and ensures angles are within +/- 180 degrees
         relative_azimuth = utils.normalizeTo180Jit(utils.normalizeTo360(wind_dir) - utils.normalizeTo360(azimuth))
         encoder_norm = utils.normalizeTo180Jit(encoder_angle)
         
+        # Use instance variable vradial_interpolator on input arguments to generate array of vradial_luts in same shape as inputs
         return np.reshape(self.vradial_interpolator((wind_speed.flatten(),relative_azimuth.flatten(),encoder_norm.flatten())),np.shape(encoder_norm))
     
     
@@ -72,6 +80,7 @@ class OdyseaErrors:
 
         """
         
+        #Ignores z component of wind?
         std_vx = np.sqrt(orbit.vr_std_fore**2 + orbit.vr_std_aft**2)/(2*np.cos(orbit.encoder_aft*np.pi/180))
         std_vy = np.sqrt(orbit.vr_std_fore**2 + orbit.vr_std_aft**2)/(2*np.sin(orbit.encoder_aft*np.pi/180))
 
@@ -95,6 +104,7 @@ class OdyseaErrors:
 
         """
         
+        # orbit must also have azimuth_fore and encoder_fore, and vy_std and vx_std already added
         pf_v_dir = orbit.azimuth_fore - orbit.encoder_fore
 
         t = pf_v_dir*np.pi/180
@@ -111,6 +121,8 @@ class OdyseaErrors:
     
     def simulateCurrentSTD(self,orbit,wind_speed=7,wind_dir=0):
         
+        # Adds vr_std_fore, vr_std_aft, then vx_std and vy_std, then u_std and v_std
+        # Requires azimuth fore and aft and encoder fore and aft to already be loaded
         orbit = self.setRadialVelocitySTD(orbit,wind_speed=wind_speed,wind_dir=wind_dir)
         orbit = self.setXYVelocitySTDForeAft(orbit)
         orbit = self.setUVVelocitySTD(orbit)
@@ -131,7 +143,8 @@ class OdyseaErrors:
             orbit (xarray dataset): original input dataset with added vx_std and vy_std variables in m/s.
 
         """
-        
+        # Doc string "Returns" should be renamed with names of what is actually added to orbit dataset
+        # Attempts to use wind_speed_model and wind_dir_model, truncating speed values above 20 or below 1
         try:
             wind_speed = np.copy(orbit.wind_speed_model.values)
             wind_dir = np.copy(orbit.wind_dir_model.values)
@@ -139,16 +152,20 @@ class OdyseaErrors:
             wind_speed[wind_speed>19] = 19
             wind_speed[wind_speed<1] = 1
 
+        # If wind_speed_model or wind_dir_model not present in orbit, use passed wind_speed, wind_dir kwargs
         except:
             print('Using wind speed from function args. Assign "wind_speed" and "wind_dir" variables to orbit dataset if desired.')
             wind_speed = wind_speed * np.ones(np.shape(orbit.encoder_fore.values))
             wind_dir = wind_dir * np.ones(np.shape(orbit.encoder_fore.values))
 
             
-        nanmask = np.isnan(wind_speed + wind_dir)
+        nanmask = np.isnan(wind_speed + wind_dir) # Create mask that is true where both wind_speed and wind_dir are nan
+        # Initialize vradial_fore_std and vradial_aft_std as nan arrays of same shape as wind_speed
         vradial_fore_std = np.nan*np.ones(np.shape(wind_speed))
         vradial_aft_std = np.nan*np.ones(np.shape(wind_speed))
 
+        # Wherever nanmask isn't 1 (avoiding nan values), call vradialSTDLookup to generate array of values for
+        # vradial std based on wind speed, wind dir, encoder, azimuth values
         vradial_fore_std[~nanmask] = self.vradialSTDLookup(wind_speed[~nanmask],wind_dir[~nanmask],
                                                            np.copy(orbit.encoder_fore.values)[~nanmask],
                                                            np.copy(orbit.azimuth_fore.values)[~nanmask])
@@ -157,6 +174,7 @@ class OdyseaErrors:
                                                           np.copy(orbit.encoder_aft.values)[~nanmask],
                                                           np.copy(orbit.azimuth_aft.values)[~nanmask])
 
+        # Add vradial_fore_std and vradial_aft_std to orbit object and return it
         orbit = orbit.assign({'vr_std_fore': (['along_track', 'cross_track'], vradial_fore_std),
                               'vr_std_aft': (['along_track', 'cross_track'], vradial_aft_std)})
         
@@ -211,25 +229,29 @@ class OdyseaErrors:
             base_std= .505
 
         elif etype=='simulated_baseline':
+            # Add vr_std_fore, vr_std_aft, then vx_std and vy_std, then u_std and v_std to orbit dataset
             orbit = self.simulateCurrentSTD(orbit,wind_speed=wind_speed,wind_dir=wind_dir)
 
+        # If using uniform standard deviation base instead of std as function of wind
         if 'simulated' not in etype:
             # basic single number STD
 
             component_std = base_std/np.sqrt(2)
             component_std = component_std/np.sqrt(n_samples)
 
-            size=np.shape(orbit['lat'])
+            size=np.shape(orbit['lat']) # Shape = along track by across track bins
+            # Use normal distribution around 0 with std = component_std to create noise array of size along track by across track
             u_errors = np.random.normal(scale=component_std,size=size)
             v_errors = np.random.normal(scale=component_std,size=size)
 
         else:
             # using the radial veloicty lookup table errors
-
+            # Generate normal distribution noise array, with std scaled by u or v std at each along/across track point
             u_errors = np.random.normal(scale=orbit['u_std'].values/np.sqrt(n_samples))
             v_errors = np.random.normal(scale=orbit['v_std'].values/np.sqrt(n_samples))
 
 
+        # Add u_error and v_error to orbit dataset
         orbit = orbit.assign({'u_error': (['along_track', 'cross_track'], u_errors),
                               'v_error': (['along_track', 'cross_track'], v_errors)})
 
@@ -275,31 +297,39 @@ class OdyseaErrors:
         elif etype=='threshold':
 
             base_speed_std = 1.5
-            bace_speed_pct = .15
+            bace_speed_pct = .15 # Mispelling -> would through error if 'threshold' option were picked
 
             base_dir_std_lowspd = 25
             base_dir_std_highspd = 20
 
 
+        # Set speed std array based on wind speed * base_speed_pct, but limit maximum speed_std value to base_speed_std
+        # Higher wind speed means higher std up to a limit
         speed_std = orbit.wind_speed_model.values * base_speed_pct
         speed_std[speed_std > base_speed_std] = base_speed_std
 
+        # Set dir_stsd array to base_dir_std_lowspd for winds below 10m/s and to base_dir_std_highspd for winds above 10 m/s
+        # Lower std at higher wind speeds
         dir_std = base_dir_std_lowspd * np.ones_like(orbit.wind_speed_model.values)
         dir_std[orbit.wind_speed_model.values > 10] = base_dir_std_highspd
 
 
+        # Divide dir_std and speed_std by number of samples
         n_samples = (resolution/5000)**2
         dir_std = dir_std/np.sqrt(n_samples)
         speed_std = speed_std/np.sqrt(n_samples)
 
+        # Create speed_errors and dir_errors as normal distribution arrays centered at 0, with std scale equal to std at each point
         speed_errors = np.random.normal(scale=speed_std)
         dir_errors = np.random.normal(scale=dir_std)
 
+        # Add wind_speed_error and wind_dir_error to orbit dataset
         orbit = orbit.assign({'wind_speed_error': (['along_track', 'cross_track'], speed_errors),
                               'wind_dir_error': (['along_track', 'cross_track'], dir_errors)})
 
         
         # propagate the speed/dir errors through to U/V errors
+        # utils.SDToUVErrors returns u_wind_std, v_wind_std
         u_wind_std,v_wind_std = utils.SDToUVErrors(orbit.wind_speed_model.values,orbit.wind_dir_model.values,speed_std,dir_std)
 
         u_wind_error = np.random.normal(scale=u_wind_std)
