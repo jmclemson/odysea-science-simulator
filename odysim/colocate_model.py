@@ -24,10 +24,7 @@ class GriddedModel:
     """
     
 
-    def __init__(self,model_folder='/u/bura-m0/hectorg/COAS/llc2160/HighRes/',
-                 u_folder='U',v_folder='V',tau_x_folder='oceTAUX',tau_y_folder='oceTAUY',
-                 u_varname='U',v_varname='V',tau_x_varname='oceTAUX',tau_y_varname='oceTAUY',
-                 search_string = '/*.nc',preprocess=None,n_files=-1):
+    def __init__(self, u_stress, v_stress):
 
         """
         Initialize a GriddedModel object.
@@ -54,28 +51,28 @@ class GriddedModel:
 
 
         # Create paths for model data variables
-        u_search = os.path.join(model_folder, u_folder)
-        v_search = os.path.join(model_folder, v_folder)
-        tau_x_search = os.path.join(model_folder, tau_x_folder)
-        tau_y_search = os.path.join(model_folder, tau_y_folder)
+        #u_search = os.path.join(model_folder, u_folder)
+        #v_search = os.path.join(model_folder, v_folder)
+        #tau_x_search = os.path.join(model_folder, tau_x_folder)
+        #tau_y_search = os.path.join(model_folder, tau_y_folder)
 
         # Create an array of file names for each data variable
-        u_files = np.sort(glob.glob(u_search + '/*.nc'))[0:n_files]
-        v_files = np.sort(glob.glob(v_search + '/*.nc'))[0:n_files]
-        tau_x_files = np.sort(glob.glob(tau_x_search + '/*.nc'))[0:n_files]
-        tau_y_files = np.sort(glob.glob(tau_y_search + '/*.nc'))[0:n_files]
+        #u_files = np.sort(glob.glob(u_search + '/*.nc'))[0:n_files]
+        #v_files = np.sort(glob.glob(v_search + '/*.nc'))[0:n_files]
+        #tau_x_files = np.sort(glob.glob(tau_x_search + '/*.nc'))[0:n_files]
+        #tau_y_files = np.sort(glob.glob(tau_y_search + '/*.nc'))[0:n_files]
 
         # Load data variable files -> Why datasets and not dataArrays since each data variable is stored separately?
-        self.U = xr.open_mfdataset(u_files,parallel=True,preprocess=preprocess)
-        self.V = xr.open_mfdataset(v_files,parallel=True,preprocess=preprocess)
-        self.TX = xr.open_mfdataset(tau_x_files,parallel=True,preprocess=preprocess)
-        self.TY = xr.open_mfdataset(tau_y_files,parallel=True,preprocess=preprocess)
+        #self.U = xr.open_mfdataset(u_files,parallel=True,preprocess=preprocess)
+        #self.V = xr.open_mfdataset(v_files,parallel=True,preprocess=preprocess)
+        self.TX = u_stress
+        self.TY = v_stress
 
         #Assign names to instance variables
-        self.u_varname = u_varname
-        self.v_varname = v_varname
-        self.tau_x_varname = tau_x_varname
-        self.tau_y_varname = tau_y_varname
+        #self.u_varname = u_varname
+        #self.v_varname = v_varname
+        self.tau_x_varname = ''
+        self.tau_y_varname = ''
 
         
         

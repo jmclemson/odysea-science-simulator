@@ -169,6 +169,7 @@ def windToStress(wind_speed,wind_dir=None):
     Convert wind to wind stress field
     Assumes current relative winds 
     """
+    # Wind dir relative to north
 
     ### Assuming Large and Pond < 10 m/s
     cdl = 1.12e-3
