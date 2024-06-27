@@ -71,8 +71,8 @@ class GriddedModel:
         #Assign names to instance variables
         #self.u_varname = u_varname
         #self.v_varname = v_varname
-        self.tau_x_varname = ''
-        self.tau_y_varname = ''
+        self.tau_x_varname = 'u_stress'
+        self.tau_y_varname = 'v_stress'
 
         
         
