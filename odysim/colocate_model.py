@@ -27,7 +27,7 @@ class GriddedModel:
     def __init__(self,model_folder='/u/bura-m0/hectorg/COAS/llc2160/HighRes/',
                  u_folder='U',v_folder='V',tau_x_folder='oceTAUX',tau_y_folder='oceTAUY',
                  u_varname='U',v_varname='V',tau_x_varname='oceTAUX',tau_y_varname='oceTAUY',
-                 search_string = '/*.nc',preprocess=None,n_files=-1):
+                 variable_selector='winds+currents',search_string = '/*.nc',preprocess=None,n_files=-1):
 
         """
         Initialize a GriddedModel object.
@@ -42,6 +42,9 @@ class GriddedModel:
             v_varname (str): Variable name inside model netcdf files for V current.
             tau_x_varname (str): Variable name inside model netcdf files for U wind stress.
             tau_y_varname (str): Variable name inside model netcdf files for V wind stress.
+            variable_selector (str): String indicating which variables are present in model data
+                - Include sub-string "wind" to load wind model data
+                - Include sub-string "current" to load current model data
             search_string (str): File extension for model data files.
             preprocess (function): function to pass to xarray.open_mfdataset for preprocessing.
             n_files (int): number of files to load, 0:n_files. Used to reduce load if many files are available in the model folder.
@@ -52,25 +55,31 @@ class GriddedModel:
         """
 
 
-        u_search = os.path.join(model_folder, u_folder)
-        v_search = os.path.join(model_folder, v_folder)
-        tau_x_search = os.path.join(model_folder, tau_x_folder)
-        tau_y_search = os.path.join(model_folder, tau_y_folder)
+        if 'current' in variable_selector:
+            u_search = os.path.join(model_folder, u_folder)
+            v_search = os.path.join(model_folder, v_folder)
+
+            u_files = np.sort(glob.glob(u_search + search_string))[0:n_files]
+            v_files = np.sort(glob.glob(v_search + search_string))[0:n_files]
+
+            self.U = xr.open_mfdataset(u_files,parallel=True,preprocess=preprocess)
+            self.V = xr.open_mfdataset(v_files,parallel=True,preprocess=preprocess)
+
+            self.u_varname = u_varname
+            self.v_varname = v_varname
+
+        if 'wind' in variable_selector:
+            tau_x_search = os.path.join(model_folder, tau_x_folder)
+            tau_y_search = os.path.join(model_folder, tau_y_folder)
         
-        u_files = np.sort(glob.glob(u_search + search_string))[0:n_files]
-        v_files = np.sort(glob.glob(v_search + search_string))[0:n_files]
-        tau_x_files = np.sort(glob.glob(tau_x_search + search_string))[0:n_files]
-        tau_y_files = np.sort(glob.glob(tau_y_search + search_string))[0:n_files]
+            tau_x_files = np.sort(glob.glob(tau_x_search + search_string))[0:n_files]
+            tau_y_files = np.sort(glob.glob(tau_y_search + search_string))[0:n_files]
 
-        self.U = xr.open_mfdataset(u_files,parallel=True,preprocess=preprocess)
-        self.V = xr.open_mfdataset(v_files,parallel=True,preprocess=preprocess)
-        self.TX = xr.open_mfdataset(tau_x_files,parallel=True,preprocess=preprocess)
-        self.TY = xr.open_mfdataset(tau_y_files,parallel=True,preprocess=preprocess)
+            self.TX = xr.open_mfdataset(tau_x_files,parallel=True,preprocess=preprocess)
+            self.TY = xr.open_mfdataset(tau_y_files,parallel=True,preprocess=preprocess)
 
-        self.u_varname = u_varname
-        self.v_varname = v_varname
-        self.tau_x_varname = tau_x_varname
-        self.tau_y_varname = tau_y_varname
+            self.tau_x_varname = tau_x_varname
+            self.tau_y_varname = tau_y_varname
 
         
         
