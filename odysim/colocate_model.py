@@ -57,10 +57,10 @@ class GriddedModel:
         tau_x_search = os.path.join(model_folder, tau_x_folder)
         tau_y_search = os.path.join(model_folder, tau_y_folder)
         
-        u_files = np.sort(glob.glob(u_search + '/*.nc'))[0:n_files]
-        v_files = np.sort(glob.glob(v_search + '/*.nc'))[0:n_files]
-        tau_x_files = np.sort(glob.glob(tau_x_search + '/*.nc'))[0:n_files]
-        tau_y_files = np.sort(glob.glob(tau_y_search + '/*.nc'))[0:n_files]
+        u_files = np.sort(glob.glob(u_search + search_string))[0:n_files]
+        v_files = np.sort(glob.glob(v_search + search_string))[0:n_files]
+        tau_x_files = np.sort(glob.glob(tau_x_search + search_string))[0:n_files]
+        tau_y_files = np.sort(glob.glob(tau_y_search + search_string))[0:n_files]
 
         self.U = xr.open_mfdataset(u_files,parallel=True,preprocess=preprocess)
         self.V = xr.open_mfdataset(v_files,parallel=True,preprocess=preprocess)
