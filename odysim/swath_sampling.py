@@ -319,8 +319,8 @@ class OdyseaSwath:
             with the full iterator containing all orbits between start_time and end_time.
         
         Args:
-            start_time (np.datetime64): start time for first orbit
-            end_time (np.array): end time for last orbit (modulo down to orbital period). No partial orbits.
+            start_time (datetime.datetime): start time for first orbit
+            end_time (datetime.datetime): end time for last orbit (modulo down to orbital period). No partial orbits.
         Returns:
            ds: iterator containing orbit objects, each generated at the time of __next__ call.
 
