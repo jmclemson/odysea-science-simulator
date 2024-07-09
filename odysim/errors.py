@@ -275,7 +275,7 @@ class OdyseaErrors:
         elif etype=='threshold':
 
             base_speed_std = 1.5
-            bace_speed_pct = .15
+            base_speed_pct = .15
 
             base_dir_std_lowspd = 25
             base_dir_std_highspd = 20
