@@ -80,7 +80,7 @@ class GriddedModel:
                 v10 = xr.open_mfdataset(wind_y_files,parallel=True,preprocess=preprocess)
 
                 wind_speed = np.sqrt(u10.U10M**2 + v10.V10M**2)
-                wind_dir = np.arctan2(u10.U10M, v10.V10M)
+                wind_dir = np.arctan2(u10.U10M, v10.V10M) * 180/np.pi # In degrees
 
                 tau_X, tau_Y = utils.windToStress(wind_speed, wind_dir)
 
