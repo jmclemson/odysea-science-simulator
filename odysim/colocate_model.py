@@ -79,10 +79,16 @@ class GriddedModel:
                 u10 = xr.open_mfdataset(wind_x_files,parallel=True,preprocess=preprocess)
                 v10 = xr.open_mfdataset(wind_y_files,parallel=True,preprocess=preprocess)
 
-                wind_speed = np.sqrt(u10**2 + v10**2)
-                wind_dir = np.arctan2(u10, v10)
+                wind_speed = np.sqrt(u10.U10M**2 + v10.V10M**2)
+                wind_dir = np.arctan2(u10.U10M, v10.V10M)
 
-                self.TX, self.TY = utils.windToStress(wind_speed, wind_dir)
+                tau_X, tau_Y = utils.windToStress(wind_speed, wind_dir)
+
+                self.TX = tau_X.to_dataset(name='tauX')
+                self.TY = tau_Y.to_dataset(name='tauY')
+
+                self.tau_x_varname = 'tauX'
+                self.tau_y_varname = 'tauY'
 
             else:
                 self.TX = xr.open_mfdataset(wind_x_files,parallel=True,preprocess=preprocess)
