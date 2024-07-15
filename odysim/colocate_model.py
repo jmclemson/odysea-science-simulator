@@ -82,8 +82,8 @@ class GriddedModel:
                 file = os.path.join(model_folder, tau_x_folder)
 
                 dataset = xr.open_dataset(file, preprocess=preprocess)
-                self.U = dataset[tau_x_varname].to_dataset(name=tau_x_varname)
-                self.V = dataset[tau_x_varname].to_dataset(name=tau_x_varname)
+                wind_x = dataset[tau_x_varname].to_dataset(name=tau_x_varname)
+                wind_y = dataset[tau_x_varname].to_dataset(name=tau_x_varname)
             else:
                 tau_x_search = os.path.join(model_folder, tau_x_folder)
                 tau_y_search = os.path.join(model_folder, tau_y_folder)
@@ -91,12 +91,27 @@ class GriddedModel:
                 tau_x_files = np.sort(glob.glob(tau_x_search + search_string))[0:n_files]
                 tau_y_files = np.sort(glob.glob(tau_y_search + search_string))[0:n_files]
 
-                self.TX = xr.open_mfdataset(tau_x_files,parallel=True,preprocess=preprocess)
-                self.TY = xr.open_mfdataset(tau_y_files,parallel=True,preprocess=preprocess)
+                wind_x = xr.open_mfdataset(tau_x_files,parallel=True,preprocess=preprocess)
+                wind_y = xr.open_mfdataset(tau_y_files,parallel=True,preprocess=preprocess)
 
-            self.tau_x_varname = tau_x_varname
-            self.tau_y_varname = tau_y_varname
+            if 'speed' in wind_var:
+                wind_speed = np.sqrt(u10.U10M**2 + v10.V10M**2)
+                wind_dir = np.arctan2(u10.U10M, v10.V10M) * 180/np.pi # In degrees
 
+                tau_X, tau_Y = utils.windToStress(wind_speed, wind_dir)
+
+                self.TX = tau_X.to_dataset(name='tauX')
+                self.TY = tau_Y.to_dataset(name='tauY')
+
+                self.tau_x_varname = 'tauX'
+                self.tau_y_varname = 'tauY'
+            
+            else:
+                self.TX = wind_x
+                self.TY = wind_y
+
+                self.tau_x_varname = tau_x_varname
+                self.tau_y_varname = tau_y_varname
         
         
     def colocatePoints(self,lats,lons,times):
