@@ -25,9 +25,9 @@ class GriddedModel:
     
 
     def __init__(self,model_folder='/u/bura-m0/hectorg/COAS/llc2160/HighRes/',
-                 u_folder='U',v_folder='V',tau_x_folder='oceTAUX',tau_y_folder='oceTAUY',
-                 u_varname='U',v_varname='V',tau_x_varname='oceTAUX',tau_y_varname='oceTAUY',
-                 variable_selector='winds+currents',search_string = '/*.nc',preprocess=None,n_files=-1):
+                 u_folder='U',v_folder='V',wind_x_folder='oceTAUX',wind_y_folder='oceTAUY',
+                 u_varname='U',v_varname='V',wind_x_varname='oceTAUX',wind_y_varname='oceTAUY',
+                 variable_selector='winds+currents',wind_var='stress',search_string = '/*.nc',preprocess=None,n_files=-1):
 
         """
         Initialize a GriddedModel object.
@@ -60,7 +60,7 @@ class GriddedModel:
             if n_files == 'combined':
                 file = os.path.join(model_folder, u_folder)
 
-                dataset = xr.open_dataset(file, preprocess=preprocess)
+                dataset = xr.open_dataset(file, chunks='auto')
                 self.U = dataset[u_varname].to_dataset(name=u_varname)
                 self.V = dataset[v_varname].to_dataset(name=v_varname)
 
@@ -79,24 +79,24 @@ class GriddedModel:
 
         if 'wind' in variable_selector:
             if n_files == 'combined':
-                file = os.path.join(model_folder, tau_x_folder)
+                file = os.path.join(model_folder, wind_x_folder)
 
-                dataset = xr.open_dataset(file, preprocess=preprocess)
-                wind_x = dataset[tau_x_varname].to_dataset(name=tau_x_varname)
-                wind_y = dataset[tau_x_varname].to_dataset(name=tau_x_varname)
+                dataset = xr.open_dataset(file, chunks='auto')
+                wind_x = dataset[wind_x_varname].to_dataset(name=wind_x_varname)
+                wind_y = dataset[wind_x_varname].to_dataset(name=wind_y_varname)
             else:
-                tau_x_search = os.path.join(model_folder, tau_x_folder)
-                tau_y_search = os.path.join(model_folder, tau_y_folder)
+                wind_x_search = os.path.join(model_folder, wind_y_folder)
+                wind_y_search = os.path.join(model_folder, wind_y_folder)
         
-                tau_x_files = np.sort(glob.glob(tau_x_search + search_string))[0:n_files]
-                tau_y_files = np.sort(glob.glob(tau_y_search + search_string))[0:n_files]
+                wind_x_files = np.sort(glob.glob(wind_x_search + search_string))[0:n_files]
+                wind_y_files = np.sort(glob.glob(wind_y_search + search_string))[0:n_files]
 
-                wind_x = xr.open_mfdataset(tau_x_files,parallel=True,preprocess=preprocess)
-                wind_y = xr.open_mfdataset(tau_y_files,parallel=True,preprocess=preprocess)
+                wind_x = xr.open_mfdataset(wind_x_files,parallel=True,preprocess=preprocess)
+                wind_y = xr.open_mfdataset(wind_y_files,parallel=True,preprocess=preprocess)
 
             if 'speed' in wind_var:
-                wind_speed = np.sqrt(u10.U10M**2 + v10.V10M**2)
-                wind_dir = np.arctan2(u10.U10M, v10.V10M) * 180/np.pi # In degrees
+                wind_speed = np.sqrt(wind_x[wind_x_varname]**2 + wind_y[wind_y_varname]**2)
+                wind_dir = np.arctan2(wind_x[wind_x_varname], wind_y[wind_y_varname]) * 180/np.pi # In degrees
 
                 tau_X, tau_Y = utils.windToStress(wind_speed, wind_dir)
 
@@ -110,8 +110,8 @@ class GriddedModel:
                 self.TX = wind_x
                 self.TY = wind_y
 
-                self.tau_x_varname = tau_x_varname
-                self.tau_y_varname = tau_y_varname
+                self.tau_x_varname = wind_x_varname
+                self.tau_y_varname = wind_y_varname
         
         
     def colocatePoints(self,lats,lons,times):
