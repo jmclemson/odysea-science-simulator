@@ -83,7 +83,7 @@ class GriddedModel:
 
                 dataset = xr.open_dataset(file, chunks='auto')
                 wind_x = dataset[wind_x_varname].to_dataset(name=wind_x_varname)
-                wind_y = dataset[wind_x_varname].to_dataset(name=wind_y_varname)
+                wind_y = dataset[wind_y_varname].to_dataset(name=wind_y_varname)
             else:
                 wind_x_search = os.path.join(model_folder, wind_x_folder)
                 wind_y_search = os.path.join(model_folder, wind_y_folder)
