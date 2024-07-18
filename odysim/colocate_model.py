@@ -27,7 +27,7 @@ class GriddedModel:
     def __init__(self,model_folder='/u/bura-m0/hectorg/COAS/llc2160/HighRes/',
                  u_folder='U',v_folder='V',wind_x_folder='oceTAUX',wind_y_folder='oceTAUY',
                  u_varname='U',v_varname='V',wind_x_varname='oceTAUX',wind_y_varname='oceTAUY',
-                 variable_selector='winds+currents',wind_var='stress',search_string = '/*.nc',preprocess=None,n_files=-1):
+                 variable_selector='winds+currents',wind_var='speed',search_string = '/*.nc',preprocess=None,n_files=-1):
 
         """
         Initialize a GriddedModel object.
@@ -82,8 +82,8 @@ class GriddedModel:
                 file = os.path.join(model_folder, wind_x_folder)
 
                 dataset = xr.open_dataset(file, chunks='auto')
-                wind_x = dataset[wind_x_varname].to_dataset(name=wind_x_varname)
-                wind_y = dataset[wind_y_varname].to_dataset(name=wind_y_varname)
+                self.wind_x = dataset[wind_x_varname].to_dataset(name=wind_x_varname)
+                self.wind_y = dataset[wind_y_varname].to_dataset(name=wind_y_varname)
             else:
                 wind_x_search = os.path.join(model_folder, wind_x_folder)
                 wind_y_search = os.path.join(model_folder, wind_y_folder)
@@ -91,27 +91,12 @@ class GriddedModel:
                 wind_x_files = np.sort(glob.glob(wind_x_search + search_string))[0:n_files]
                 wind_y_files = np.sort(glob.glob(wind_y_search + search_string))[0:n_files]
 
-                wind_x = xr.open_mfdataset(wind_x_files,parallel=True,preprocess=preprocess)
-                wind_y = xr.open_mfdataset(wind_y_files,parallel=True,preprocess=preprocess)
+                self.wind_x = xr.open_mfdataset(wind_x_files,parallel=True,preprocess=preprocess)
+                self.wind_y = xr.open_mfdataset(wind_y_files,parallel=True,preprocess=preprocess)
 
-            if 'speed' in wind_var:
-                wind_speed = np.sqrt(wind_x[wind_x_varname]**2 + wind_y[wind_y_varname]**2)
-                wind_dir = np.arctan2(wind_x[wind_x_varname], wind_y[wind_y_varname]) * 180/np.pi # In degrees
-
-                tau_X, tau_Y = utils.windToStress(wind_speed, wind_dir)
-
-                self.TX = tau_X.to_dataset(name='tauX')
-                self.TY = tau_Y.to_dataset(name='tauY')
-
-                self.tau_x_varname = 'tauX'
-                self.tau_y_varname = 'tauY'
-            
-            else:
-                self.TX = wind_x
-                self.TY = wind_y
-
-                self.tau_x_varname = wind_x_varname
-                self.tau_y_varname = wind_y_varname
+            self.wind_x_varname = wind_x_varname
+            self.wind_y_varname = wind_y_varname
+            self.wind_var_type = wind_var
         
         
     def colocatePoints(self,lats,lons,times):
@@ -131,8 +116,8 @@ class GriddedModel:
            
            u: colocated model u currents.
            v: colocated model v currents.
-           tx: colocated model u wind stress.
-           ty: colocated model v wind stress.
+           wx: colocated model u winds.
+           wy: colocated model v winds.
 
         """
 
@@ -150,12 +135,12 @@ class GriddedModel:
                             lon=xr.DataArray(lons.flatten(), dims='z'),
                             method='linear')
         
-        ds_tx =  self.TX.interp(time=xr.DataArray(times.flatten(), dims='z'),
+        ds_wx =  self.wind_x.interp(time=xr.DataArray(times.flatten(), dims='z'),
                             lat=xr.DataArray(lats.flatten(), dims='z'),
                             lon=xr.DataArray(lons.flatten(), dims='z'),
                             method='linear')
 
-        ds_ty =  self.TY.interp(time=xr.DataArray(times.flatten(), dims='z'),
+        ds_wy =  self.wind_y.interp(time=xr.DataArray(times.flatten(), dims='z'),
                             lat=xr.DataArray(lats.flatten(), dims='z'),
                             lon=xr.DataArray(lons.flatten(), dims='z'),
                             method='linear')
@@ -163,10 +148,10 @@ class GriddedModel:
 
         u=np.reshape(ds_u[self.u_varname].values,np.shape(lats))
         v=np.reshape(ds_v[self.v_varname].values,np.shape(lats))
-        tx=np.reshape(ds_tx[self.tau_x_varname].values,np.shape(lats))
-        ty=np.reshape(ds_ty[self.tau_y_varname].values,np.shape(lats))
+        wx=np.reshape(ds_wx[self.wind_x_varname].values,np.shape(lats))
+        wy=np.reshape(ds_wy[self.wind_y_varname].values,np.shape(lats))
 
-        return u,v,tx,ty
+        return u,v,wx,wy
         
         
     def colocateSwathCurrents(self,orbit):
@@ -224,35 +209,49 @@ class GriddedModel:
         lons  = orbit['lon'].values.flatten()
         times = orbit['sample_time'].values.flatten()
 
-        ds_tx =  self.TX.interp(time=xr.DataArray(times, dims='z'),
+        ds_wx =  self.wind_x.interp(time=xr.DataArray(times, dims='z'),
                             lat=xr.DataArray(lats, dims='z'),
                             lon=xr.DataArray(lons, dims='z'),
                             method='linear')
 
-        ds_ty =  self.TY.interp(time=xr.DataArray(times, dims='z'),
+        ds_wy =  self.wind_y.interp(time=xr.DataArray(times, dims='z'),
                             lat=xr.DataArray(lats, dims='z'),
                             lon=xr.DataArray(lons, dims='z'),
                             method='linear')
 
 
-        tx_interp = np.reshape(ds_tx[self.tau_x_varname].values,np.shape(orbit['lat'].values))
-        ty_interp = np.reshape(ds_ty[self.tau_y_varname].values,np.shape(orbit['lat'].values))
+        wx_interp = np.reshape(ds_wx[self.wind_x_varname].values,np.shape(orbit['lat'].values))
+        wy_interp = np.reshape(ds_wy[self.wind_y_varname].values,np.shape(orbit['lat'].values))
 
-        wind_speed = utils.stressToWind(np.sqrt(tx_interp**2 + ty_interp**2))
-        wind_dir = np.arctan2(tx_interp,ty_interp) # in rad
-        u10 = wind_speed * np.sin(wind_dir)
-        v10 = wind_speed * np.cos(wind_dir)
+
+        if 'stress' in self.wind_var_type:
+            wind_speed = utils.stressToWind(np.sqrt(wx_interp**2 + wy_interp**2))
+            wind_dir = np.arctan2(wx_interp, wy_interp) # in rad
+            u10 = wind_speed * np.sin(wind_dir)
+            v10 = wind_speed * np.cos(wind_dir)
+            
+        else:
+            wind_speed = np.sqrt(wx_interp**2 + wy_interp**2)
+            wind_dir = np.arctan2(wx_interp, wy_interp) # in rad
+            u10 = wx_interp
+            v10 = wy_interp
 
         
         orbit = orbit.assign({'u10_model': (['along_track', 'cross_track'], u10),
                               'v10_model': (['along_track', 'cross_track'], v10)})
-        
-        
-        orbit = orbit.assign({'tx_model': (['along_track', 'cross_track'], tx_interp),
-                              'ty_model': (['along_track', 'cross_track'], ty_interp)})
 
         orbit = orbit.assign({'wind_speed_model': (['along_track', 'cross_track'], wind_speed),
                               'wind_dir_model': (['along_track', 'cross_track'], wind_dir*180/np.pi)})
+        
+        
+        if 'stress' in self.wind_var_type:
+            orbit = orbit.assign({'tx_model': (['along_track', 'cross_track'], wx_interp),
+                                  'ty_model': (['along_track', 'cross_track'], wy_interp)})
+            
+            orbit['u10_model'].attrs['Units'] = 'Current Relative'
+            orbit['v10_model'].attrs['Units'] = 'Current Relative'
+            orbit['wind_speed_model'].attrs['Units'] = 'Current Relative'
+            orbit['wind_dir_model'].attrs['Units'] = 'Current Relative'
         
         
         return orbit
