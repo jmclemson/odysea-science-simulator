@@ -250,7 +250,8 @@ class OdyseaErrors:
  
         Returns:
             orbit (xarray dataset): original input dataset with added wind_speed_error, wind_dir_error, 
-                                    wind_u_error, wind_v_error, stress_u_error, stress_v_error, and stress_mag_error variables.
+                                    wind_u_error, wind_v_error, stress_u_error variables, as well as stress_v_error
+                                    and stress_mag_error variables if stress data is present in the orbit dataset.
 
         """
         

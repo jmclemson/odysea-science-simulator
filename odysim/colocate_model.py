@@ -36,19 +36,26 @@ class GriddedModel:
             model_folder (str): Top-level folder for model data. Contains sub folders for each variable.
             u_folder (str): Sub-folder containing model U current data (East-West currents).
             v_folder (str): Sub-folder containing model V current data (North-South currents).
-            tau_x_folder (str): Sub-folder containing model U wind stress current data (East-West wind stress).
-            tau_y_folder (str): Sub-folder containing model V wind stress current data (North-South wind stress).
+            current_fname (str): File name of dataset containing combined current data (East-West and North-South currents).
+                - Relavant only when using n_files="combined" to read a single dataset with both current variables.
+            wind_x_folder (str): Sub-folder containing model U wind data (10m zonal wind speed or East-West wind stress).
+            wind_y_folder (str): Sub-folder containing model V wind data (10m meridonal wind speed or North-South wind stress).
+            wind_fname (str): File name of dataset containing combined wind data (East-West and North-South wind speed or stress).
+                - Relavant only when using n_files="combined" to read a single dataset with both wind variables.
             u_varname (str): Variable name inside model netcdf files for U current.
             v_varname (str): Variable name inside model netcdf files for V current.
-            tau_x_varname (str): Variable name inside model netcdf files for U wind stress.
-            tau_y_varname (str): Variable name inside model netcdf files for V wind stress.
-            variable_selector (str): String indicating which variables are present in model data
-                - Include sub-string "wind" to load wind model data
-                - Include sub-string "current" to load current model data
+            wind_x_varname (str): Variable name inside model netcdf files for U wind data.
+            wind_y_varname (str): Variable name inside model netcdf files for V wind data.
+            variable_selector (str): String indicating which variables are present in model data.
+                - Include sub-string "wind" to load wind model data.
+                - Include sub-string "current" to load current model data.
+            wind_var (str): String indicating whether 10m wind speeds or wind stress are loaded.
+                - Include sub-string "speed" to indicate 10m wind speed data.
+                - Include sub-string "stress" to indicate wind stress data.
             search_string (str): File extension for model data files.
             preprocess (function): function to pass to xarray.open_mfdataset for preprocessing.
             n_files (int or str): number of files to load, 0:n_files. Used to reduce load if many files are available in the model folder.
-                Use n_files="combined" to open a single dataset storing multiple variables
+                - Use n_files="combined" to open a single dataset storing multiple variables
             
         Returns:
             GriddedModel obect
@@ -201,7 +208,8 @@ class GriddedModel:
             orbit (object): xarray dataset orbit generated via the orbit.getOrbit() call. 
         Returns:
            original orbit containing model data linearly interpolated to the orbit swath.
-                   new data is contained in u10_model, v10_model, tx_model, ty_model, wind_speed_model, wind_dir_model
+                   new data is contained in u10_model, v10_model, wind_speed_model, wind_dir_model, and 
+                   in  tx_model, ty_model if wind stress data was passed during initialization.
 
         """
         
