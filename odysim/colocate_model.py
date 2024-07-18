@@ -25,8 +25,8 @@ class GriddedModel:
     
 
     def __init__(self,model_folder='/u/bura-m0/hectorg/COAS/llc2160/HighRes/',
-                 u_folder='U',v_folder='V',wind_x_folder='oceTAUX',wind_y_folder='oceTAUY',
-                 u_varname='U',v_varname='V',wind_x_varname='oceTAUX',wind_y_varname='oceTAUY',
+                 u_folder='U',v_folder='V',current_fname=None,wind_x_folder='oceTAUX',wind_y_folder='oceTAUY',
+                 wind_fname=None,u_varname='U',v_varname='V',wind_x_varname='oceTAUX',wind_y_varname='oceTAUY',
                  variable_selector='winds+currents',wind_var='speed',search_string = '/*.nc',preprocess=None,n_files=-1):
 
         """
@@ -58,7 +58,7 @@ class GriddedModel:
 
         if 'current' in variable_selector:
             if n_files == 'combined':
-                file = os.path.join(model_folder, u_folder)
+                file = os.path.join(model_folder, current_fname)
 
                 dataset = xr.open_dataset(file, chunks='auto')
                 self.U = dataset[u_varname].to_dataset(name=u_varname)
@@ -79,7 +79,7 @@ class GriddedModel:
 
         if 'wind' in variable_selector:
             if n_files == 'combined':
-                file = os.path.join(model_folder, wind_x_folder)
+                file = os.path.join(model_folder, wind_fname)
 
                 dataset = xr.open_dataset(file, chunks='auto')
                 self.wind_x = dataset[wind_x_varname].to_dataset(name=wind_x_varname)
