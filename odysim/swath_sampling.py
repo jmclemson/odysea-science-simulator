@@ -115,13 +115,15 @@ class WGS84:
 
 class OdyseaSwath:
     
-    def __init__(self,orbit_fname='orbit_out_2020_2023_height590km.npz',config_fname='wacm_sampling_config.py'):
+    def __init__(self,orbit_fname='orbit_out_2020_2023_height590km.npz',config_fname='wacm_sampling_config.py',region=None):
                 
         """
         Initialize an OdyseaSwath object. Eventaully, this will contain configuration etc. TODO..
         
         Args:
             config_fname (str): configuration file (not yet implemented)
+            region (list): Optional specification of region in form of [lon_min, lon_max, lat_min, lat_max]
+                - Cuts orbit data not within the region
 
         Returns:
            OdyseaSwath object
@@ -142,6 +144,7 @@ class OdyseaSwath:
             
         self.loadOrbitXYZ(fn=orbit_fname)
         self.config_fname=config_fname
+        self.region = region
     
     
     def getOrbitSwath(self,orbit_x,orbit_y,orbit_z,orbit_time_stamp,orbit_s,write=False):
@@ -240,6 +243,10 @@ class OdyseaSwath:
                        'lat': (['along_track', 'cross_track'], np.array(sample_lat_track,dtype='float32')),
                        'lon': (['along_track', 'cross_track'], np.array(sample_lon_track,dtype='float32')),
                        'swath_blanking': (['cross_track'], swath_blanking)})
+        
+        if self.region is not None:
+            ds = ds.where((ds.lon > self.region[0]) & (ds.lon < self.region[1])
+                                   & (ds.lat > self.region[2]) & (ds.lat < self.region[3]), drop=True)
 
         ds['swath_blanking'].attrs['comment'] = 'Flagged in areas of the swath that are expected to have unacceptable error performance.'
 
