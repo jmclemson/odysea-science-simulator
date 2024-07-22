@@ -349,12 +349,24 @@ class OdyseaSwath:
             else:
                 end_idx = valid_orbit_cut_points[idx_orbit+1]
 
-            ds = self.getOrbitSwath(self.coarse_x[start_idx:end_idx],
+            # Handles exceptions from regional selection generated in getOrbitSwath()
+            try:
+                ds = self.getOrbitSwath(self.coarse_x[start_idx:end_idx],
                                     self.coarse_y[start_idx:end_idx],
                                     self.coarse_z[start_idx:end_idx],
                                     self.time_stamp_vector_coarse[start_idx:end_idx],
                                     self.coarse_s[start_idx:end_idx],
                                     write=False)
+            except ValueError as exception:
+                # If not due to region, re-raise
+                if exception.args[0] != 'orbit does not intersect selected region':
+                    raise
+                # If exception due to region restriction, yield it and allow generator to continue
+                else:
+                    print('Error in getOrbitSwath: idx_orbit = ' + str(idx_orbit))
+                    yield exception
+                    continue
+
 
             if set_azimuth:
                 ds = self.setAzimuth(ds)
