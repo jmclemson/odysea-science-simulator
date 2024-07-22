@@ -199,7 +199,6 @@ class OdyseaSwath:
                                                                                h.flatten(),peg_lat,peg_lon,peg_hdg,peg_localRadius)
             s_time[idx_s,:] = peg_time
 
-        mask = np.isfinite(slat+slon+s_time) 
 
 
         sample_time_track=s_time
