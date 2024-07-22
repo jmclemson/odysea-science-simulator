@@ -200,6 +200,9 @@ class OdyseaSwath:
             s_time[idx_s,:] = peg_time
 
 
+        if self.region is not None:
+            if not np.any((slon > self.region[0]) * (slon < self.region[1]) * (slat > self.region[2]) * (slat < self.region[3])):
+                raise ValueError('orbit does not intersect selected region')   
 
         sample_time_track=s_time
         sample_lat_track=slat
