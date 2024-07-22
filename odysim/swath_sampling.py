@@ -363,7 +363,6 @@ class OdyseaSwath:
                     raise
                 # If exception due to region restriction, yield it and allow generator to continue
                 else:
-                    print('Error in getOrbitSwath: idx_orbit = ' + str(idx_orbit))
                     yield exception
                     continue
 
