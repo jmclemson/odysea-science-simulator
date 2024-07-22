@@ -244,9 +244,6 @@ class OdyseaSwath:
                        'lon': (['along_track', 'cross_track'], np.array(sample_lon_track,dtype='float32')),
                        'swath_blanking': (['cross_track'], swath_blanking)})
         
-        if self.region is not None:
-            ds = ds.where((ds.lon > self.region[0]) & (ds.lon < self.region[1])
-                                   & (ds.lat > self.region[2]) & (ds.lat < self.region[3]), drop=True)
 
         ds['swath_blanking'].attrs['comment'] = 'Flagged in areas of the swath that are expected to have unacceptable error performance.'
 
@@ -360,7 +357,10 @@ class OdyseaSwath:
             if set_azimuth:
                 ds = self.setAzimuth(ds)
             
-            
+            if self.region is not None:
+                ds = ds.where((ds.lon > self.region[0]) & (ds.lon < self.region[1])
+                              & (ds.lat > self.region[2]) & (ds.lat < self.region[3]), drop=True)       
+                 
             
             yield ds
 
