@@ -218,13 +218,13 @@ class GriddedModel:
         times = orbit['sample_time'].values.flatten()
 
         ds_wx =  self.wind_x.interp(time=xr.DataArray(times, dims='z'),
-                            lat=xr.DataArray(lats, dims='z'),
-                            lon=xr.DataArray(lons, dims='z'),
+                            latitude=xr.DataArray(lats, dims='z'),
+                            longitude=xr.DataArray(lons, dims='z'),
                             method='linear')
 
         ds_wy =  self.wind_y.interp(time=xr.DataArray(times, dims='z'),
-                            lat=xr.DataArray(lats, dims='z'),
-                            lon=xr.DataArray(lons, dims='z'),
+                            latitude=xr.DataArray(lats, dims='z'),
+                            longitude=xr.DataArray(lons, dims='z'),
                             method='linear')
 
 
