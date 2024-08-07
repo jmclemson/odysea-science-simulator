@@ -244,7 +244,7 @@ class OdyseaErrors:
             relative to the baseline 5000m resolution.
         
         Args:
-            orbit (xarray dataset): orbit dataset ideally containing wind speed and direction variables if etype==simulated_baseline.  
+            orbit (xarray dataset): orbit dataset containing wind speed and direction variables.  
             resolution (numeric): desired resolution at which errors are set. > 5000
             etype (str): error type. Select from 'baseline', 'low', 'threshold'
  
