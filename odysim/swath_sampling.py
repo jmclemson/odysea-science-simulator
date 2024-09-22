@@ -119,13 +119,15 @@ class WGS84:
 
 class OdyseaSwath:
     
-    def __init__(self,orbit_fname='orbit_out_590km_2020_2023.npz',config_fname='wacm_sampling_config.py'):
+    def __init__(self,orbit_fname='orbit_out_590km_2020_2023.npz',config_fname='wacm_sampling_config.py',region=None):
                 
         """
         Initialize an OdyseaSwath object. Eventaully, this will contain configuration etc. TODO..
         
         Args:
             config_fname (str): configuration file (not yet implemented)
+            region (list): Optional specification of region in form of [lon_min, lon_max, lat_min, lat_max]
+                - Cuts orbit data not within the region
 
         Returns:
            OdyseaSwath object
@@ -153,6 +155,7 @@ class OdyseaSwath:
             
         self.loadOrbitXYZ(fn=orbit_fname)
         self.config_fname=config_fname
+        self.region = region
     
     
     def getOrbitSwath(self,orbit_x,orbit_y,orbit_z,orbit_time_stamp,orbit_s,write=False):
@@ -211,8 +214,10 @@ class OdyseaSwath:
                                                                                h.flatten(),peg_lat,peg_lon,peg_hdg,peg_localRadius)
             s_time[idx_s,:] = peg_time
 
-        mask = np.isfinite(slat+slon+s_time) 
 
+        if self.region is not None:
+            if not np.any((slon > self.region[0]) * (slon < self.region[1]) * (slat > self.region[2]) * (slat < self.region[3])):
+                raise ValueError('orbit does not intersect selected region') 
 
         sample_time_track=s_time
         sample_lat_track=slat
@@ -334,8 +339,8 @@ class OdyseaSwath:
             with the full iterator containing all orbits between start_time and end_time.
         
         Args:
-            start_time (np.datetime64): start time for first orbit
-            end_time (np.array): end time for last orbit (modulo down to orbital period). No partial orbits.
+            start_time (datetime.datetime): start time for first orbit
+            end_time (datetime.datetime): end time for last orbit (modulo down to orbital period). No partial orbits.
         Returns:
            ds: iterator containing orbit objects, each generated at the time of __next__ call.
 
@@ -359,17 +364,31 @@ class OdyseaSwath:
             else:
                 end_idx = valid_orbit_cut_points[idx_orbit+1]
 
-            ds = self.getOrbitSwath(self.coarse_x[start_idx:end_idx],
+            # Handles exceptions from regional selection generated in getOrbitSwath()
+            try:
+                ds = self.getOrbitSwath(self.coarse_x[start_idx:end_idx],
                                     self.coarse_y[start_idx:end_idx],
                                     self.coarse_z[start_idx:end_idx],
                                     self.time_stamp_vector_coarse[start_idx:end_idx],
                                     self.coarse_s[start_idx:end_idx],
                                     write=False)
+                
+            except ValueError as exception:
+                # If not due to region, re-raise
+                if exception.args[0] != 'orbit does not intersect selected region':
+                    raise
+                # If exception due to region restriction, yield it and allow generator to continue
+                else:
+                    yield exception
+                    continue
+
 
             if set_azimuth:
                 ds = self.setAzimuth(ds)
             
-            
+            if self.region is not None:
+                ds = ds.where((ds.lon > self.region[0]) & (ds.lon < self.region[1])
+                              & (ds.lat > self.region[2]) & (ds.lat < self.region[3]), drop=True)       
             
             yield ds
 
