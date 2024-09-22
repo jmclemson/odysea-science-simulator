@@ -8,7 +8,18 @@ import cartopy.crs as ccrs
 from scipy import stats
 
 import os
-os.environ["CARTOPY_USER_BACKGROUNDS"] = "../cartopy_files/"
+import importlib.resources as import_resources
+from odysim import cartopy_files
+
+try:
+    cf = import_resources.files(cartopy_files)
+    os.environ["CARTOPY_USER_BACKGROUNDS"] = cf
+except:
+    # for some reason, sometimes import_resources retruns a mutliplexedpath instead of a string!
+    cf = str(import_resources.files(cartopy_files)).split("'")[0]
+    os.environ["CARTOPY_USER_BACKGROUNDS"] = cf
+
+
 
 from scipy.interpolate import UnivariateSpline
     
@@ -211,8 +222,8 @@ def makePlot(lon,lat,data,vmin,vmax,cblabel,colormap,figsize=(20,10),bg=True,gri
         mask = np.isfinite(lon+lat+data)
 
         
-        lon_lin = np.arange(-180,180,.2)
-        lat_lin = np.arange(-90,90,.2)
+        lon_lin = np.arange(-180,180,0.25)
+        lat_lin = np.arange(-90,90,0.25)
 
         lon_mesh,lat_mesh = np.meshgrid((lon_lin[1::]+lon_lin[0:-1])/2,(lat_lin[1::]+lat_lin[0:-1])/2)
         
