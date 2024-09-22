@@ -25,9 +25,9 @@ class GriddedModel:
     
 
     def __init__(self,model_folder='/u/bura-m0/hectorg/COAS/llc2160/HighRes/',
-                 u_folder='U',v_folder='V',tau_x_folder='oceTAUX',tau_y_folder='oceTAUY',
-                 u_varname='U',v_varname='V',tau_x_varname='oceTAUX',tau_y_varname='oceTAUY',
-                 search_string = '/*.nc',preprocess=None,n_files=-1):
+                 u_folder='U',v_folder='V',current_fname=None,wind_x_folder='oceTAUX',wind_y_folder='oceTAUY',
+                 wind_fname=None,u_varname='U',v_varname='V',wind_x_varname='oceTAUX',wind_y_varname='oceTAUY',
+                 variable_selector='winds+currents',wind_var='speed',search_string = '/*.nc',preprocess=None,n_files=-1):
 
         """
         Initialize a GriddedModel object.
@@ -36,15 +36,19 @@ class GriddedModel:
             model_folder (str): Top-level folder for model data. Contains sub folders for each variable.
             u_folder (str): Sub-folder containing model U current data (East-West currents).
             v_folder (str): Sub-folder containing model V current data (North-South currents).
-            tau_x_folder (str): Sub-folder containing model U wind stress current data (East-West wind stress).
-            tau_y_folder (str): Sub-folder containing model V wind stress current data (North-South wind stress).
+            current_fname (str): File name of dataset containing combined current data (East-West and North-South currents).
+                - Relavant only when using n_files="combined" to read a single dataset with both current variables.
+            wind_x_folder (str): Sub-folder containing model U wind data (10m zonal wind speed or East-West wind stress).
+            wind_y_folder (str): Sub-folder containing model V wind data (10m meridonal wind speed or North-South wind stress).
+            wind_fname (str): File name of dataset containing combined wind data (East-West and North-South wind speed or stress).
+                - Relavant only when using n_files="combined" to read a single dataset with both wind variables.
             u_varname (str): Variable name inside model netcdf files for U current.
             v_varname (str): Variable name inside model netcdf files for V current.
-            tau_x_varname (str): Variable name inside model netcdf files for U wind stress.
-            tau_y_varname (str): Variable name inside model netcdf files for V wind stress.
-            search_string (str): File extension for model data files.
-            preprocess (function): function to pass to xarray.open_mfdataset for preprocessing.
-            n_files (int): number of files to load, 0:n_files. Used to reduce load if many files are available in the model folder.
+            wind_x_varname (str): Variable name inside model netcdf files for U wind data.
+            wind_y_varname (str): Variable name inside model netcdf files for V wind data.
+            variable_selector (str): String indicating which variables are present in model data.
+                - Include sub-string "wind" to load wind model data.
+                - Include sub-string "current" to load current model data.
             
         Returns:
             GriddedModel obect
@@ -52,25 +56,47 @@ class GriddedModel:
         """
 
 
-        u_search = os.path.join(model_folder, u_folder)
-        v_search = os.path.join(model_folder, v_folder)
-        tau_x_search = os.path.join(model_folder, tau_x_folder)
-        tau_y_search = os.path.join(model_folder, tau_y_folder)
+        if 'current' in variable_selector:
+            if n_files == 'combined':
+                file = os.path.join(model_folder, current_fname)
+
+                dataset = xr.open_dataset(file, chunks='auto')
+                self.U = dataset[u_varname].to_dataset(name=u_varname)
+                self.V = dataset[v_varname].to_dataset(name=v_varname)
+
+            else:
+                u_search = os.path.join(model_folder, u_folder)
+                v_search = os.path.join(model_folder, v_folder)
+
+                u_files = np.sort(glob.glob(u_search + search_string))[0:n_files]
+                v_files = np.sort(glob.glob(v_search + search_string))[0:n_files]
+
+                self.U = xr.open_mfdataset(u_files,parallel=True,preprocess=preprocess)
+                self.V = xr.open_mfdataset(v_files,parallel=True,preprocess=preprocess)
+
+            self.u_varname = u_varname
+            self.v_varname = v_varname
+
+        if 'wind' in variable_selector:
+            if n_files == 'combined':
+                file = os.path.join(model_folder, wind_fname)
+
+                dataset = xr.open_dataset(file, chunks='auto')
+                self.wind_x = dataset[wind_x_varname].to_dataset(name=wind_x_varname)
+                self.wind_y = dataset[wind_y_varname].to_dataset(name=wind_y_varname)
+            else:
+                wind_x_search = os.path.join(model_folder, wind_x_folder)
+                wind_y_search = os.path.join(model_folder, wind_y_folder)
         
-        u_files = np.sort(glob.glob(u_search + '/*.nc'))[0:n_files]
-        v_files = np.sort(glob.glob(v_search + '/*.nc'))[0:n_files]
-        tau_x_files = np.sort(glob.glob(tau_x_search + '/*.nc'))[0:n_files]
-        tau_y_files = np.sort(glob.glob(tau_y_search + '/*.nc'))[0:n_files]
+                wind_x_files = np.sort(glob.glob(wind_x_search + search_string))[0:n_files]
+                wind_y_files = np.sort(glob.glob(wind_y_search + search_string))[0:n_files]
 
-        self.U = xr.open_mfdataset(u_files,parallel=True,preprocess=preprocess)
-        self.V = xr.open_mfdataset(v_files,parallel=True,preprocess=preprocess)
-        self.TX = xr.open_mfdataset(tau_x_files,parallel=True,preprocess=preprocess)
-        self.TY = xr.open_mfdataset(tau_y_files,parallel=True,preprocess=preprocess)
+                self.wind_x = xr.open_mfdataset(wind_x_files,parallel=True,preprocess=preprocess)
+                self.wind_y = xr.open_mfdataset(wind_y_files,parallel=True,preprocess=preprocess)
 
-        self.u_varname = u_varname
-        self.v_varname = v_varname
-        self.tau_x_varname = tau_x_varname
-        self.tau_y_varname = tau_y_varname
+            self.wind_x_varname = wind_x_varname
+            self.wind_y_varname = wind_y_varname
+            self.wind_var_type = wind_var
 
         
         
@@ -91,8 +117,8 @@ class GriddedModel:
            
            u: colocated model u currents.
            v: colocated model v currents.
-           tx: colocated model u wind stress.
-           ty: colocated model v wind stress.
+           wx: colocated model u winds.
+           wy: colocated model v winds.
 
         """
 
@@ -110,12 +136,12 @@ class GriddedModel:
                             lon=xr.DataArray(lons.flatten(), dims='z'),
                             method='linear')
         
-        ds_tx =  self.TX.interp(time=xr.DataArray(times.flatten(), dims='z'),
+        ds_wx =  self.wind_x.interp(time=xr.DataArray(times.flatten(), dims='z'),
                             lat=xr.DataArray(lats.flatten(), dims='z'),
                             lon=xr.DataArray(lons.flatten(), dims='z'),
                             method='linear')
 
-        ds_ty =  self.TY.interp(time=xr.DataArray(times.flatten(), dims='z'),
+        ds_wy =  self.wind_y.interp(time=xr.DataArray(times.flatten(), dims='z'),
                             lat=xr.DataArray(lats.flatten(), dims='z'),
                             lon=xr.DataArray(lons.flatten(), dims='z'),
                             method='linear')
@@ -123,10 +149,10 @@ class GriddedModel:
 
         u=np.reshape(ds_u[self.u_varname].values,np.shape(lats))
         v=np.reshape(ds_v[self.v_varname].values,np.shape(lats))
-        tx=np.reshape(ds_tx[self.tau_x_varname].values,np.shape(lats))
-        ty=np.reshape(ds_ty[self.tau_y_varname].values,np.shape(lats))
+        wx=np.reshape(ds_wx[self.wind].values,np.shape(lats))
+        wy=np.reshape(ds_wx[self.wind].values,np.shape(lats))
 
-        return u,v,tx,ty
+        return u,v,wx,wy
         
         
     def colocateSwathCurrents(self,orbit):
@@ -176,7 +202,8 @@ class GriddedModel:
             orbit (object): xarray dataset orbit generated via the orbit.getOrbit() call. 
         Returns:
            original orbit containing model data linearly interpolated to the orbit swath.
-                   new data is contained in u10_model, v10_model, tx_model, ty_model, wind_speed_model, wind_dir_model
+                   new data is contained in u10_model, v10_model, wind_speed_model, wind_dir_model, and 
+                   in  tx_model, ty_model if wind stress data was passed during initialization.
 
         """
         
@@ -184,36 +211,49 @@ class GriddedModel:
         lons  = orbit['lon'].values.flatten()
         times = orbit['sample_time'].values.flatten()
 
-        ds_tx =  self.TX.interp(time=xr.DataArray(times, dims='z'),
+        ds_wx =  self.wind_x.interp(time=xr.DataArray(times, dims='z'),
                             lat=xr.DataArray(lats, dims='z'),
                             lon=xr.DataArray(lons, dims='z'),
                             method='linear')
 
-        ds_ty =  self.TY.interp(time=xr.DataArray(times, dims='z'),
+        ds_wy =  self.wind_y.interp(time=xr.DataArray(times, dims='z'),
                             lat=xr.DataArray(lats, dims='z'),
                             lon=xr.DataArray(lons, dims='z'),
                             method='linear')
 
 
-        tx_interp = np.reshape(ds_tx[self.tau_x_varname].values,np.shape(orbit['lat'].values))
-        ty_interp = np.reshape(ds_ty[self.tau_y_varname].values,np.shape(orbit['lat'].values))
+        wx_interp = np.reshape(ds_wx[self.wind_x_varname].values,np.shape(orbit['lat'].values))
+        wy_interp = np.reshape(ds_wy[self.wind_y_varname].values,np.shape(orbit['lat'].values))
 
-        wind_speed = utils.stressToWind(np.sqrt(tx_interp**2 + ty_interp**2))
-        wind_dir = np.arctan2(tx_interp,ty_interp) # in rad
-        u10 = wind_speed * np.sin(wind_dir)
-        v10 = wind_speed * np.cos(wind_dir)
+
+        if 'stress' in self.wind_var_type:
+            wind_speed = utils.stressToWind(np.sqrt(wx_interp**2 + wy_interp**2))
+            wind_dir = np.arctan2(wx_interp, wy_interp) # in rad
+            u10 = wind_speed * np.sin(wind_dir)
+            v10 = wind_speed * np.cos(wind_dir)
+            
+        else:
+            wind_speed = np.sqrt(wx_interp**2 + wy_interp**2)
+            wind_dir = np.arctan2(wx_interp, wy_interp) # in rad
+            u10 = wx_interp
+            v10 = wy_interp
 
         
         orbit = orbit.assign({'u10_model': (['along_track', 'cross_track'], u10),
                               'v10_model': (['along_track', 'cross_track'], v10)})
-        
-        
-        orbit = orbit.assign({'tx_model': (['along_track', 'cross_track'], tx_interp),
-                              'ty_model': (['along_track', 'cross_track'], ty_interp)})
 
         orbit = orbit.assign({'wind_speed_model': (['along_track', 'cross_track'], wind_speed),
                               'wind_dir_model': (['along_track', 'cross_track'], wind_dir*180/np.pi)})
         
+        
+        if 'stress' in self.wind_var_type:
+            orbit = orbit.assign({'tx_model': (['along_track', 'cross_track'], wx_interp),
+                                  'ty_model': (['along_track', 'cross_track'], wy_interp)})
+            
+            orbit['u10_model'].attrs['Units'] = 'Current Relative'
+            orbit['v10_model'].attrs['Units'] = 'Current Relative'
+            orbit['wind_speed_model'].attrs['Units'] = 'Current Relative'
+            orbit['wind_dir_model'].attrs['Units'] = 'Current Relative'
         
         return orbit
     
