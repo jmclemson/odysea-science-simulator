@@ -265,7 +265,8 @@ class OdyseaErrors:
  
         Returns:
             orbit (xarray dataset): original input dataset with added wind_speed_error, wind_dir_error, 
-                                    wind_u_error, wind_v_error, stress_u_error, stress_v_error, and stress_mag_error variables.
+                                    wind_u_error, wind_v_error, stress_u_error variables, as well as stress_v_error
+                                    and stress_mag_error variables if stress data is present in the orbit dataset.
 
         """
         
@@ -290,7 +291,7 @@ class OdyseaErrors:
         elif etype=='threshold':
 
             base_speed_std = 1.5
-            bace_speed_pct = .15
+            base_speed_pct = .15
 
             base_dir_std_lowspd = 25
             base_dir_std_highspd = 20
@@ -326,24 +327,24 @@ class OdyseaErrors:
 
         # now kludge some stress errors
         # Compute stress from noisy and original wind speed/dir fields; stress error is the difference.
-        
-        wind_speed_noisy = orbit.wind_speed_model.values + speed_errors
-        wind_dir_noisy = orbit.wind_dir_model.values + dir_errors
+        if 'tx_model' in orbit.variables:
+            wind_speed_noisy = orbit.wind_speed_model.values + speed_errors
+            wind_dir_noisy = orbit.wind_dir_model.values + dir_errors
 
-        stress_mag_noisy = utils.windToStress(wind_speed_noisy)
-        stress_u_noisy,stress_v_noisy = utils.windToStress(wind_speed_noisy,wind_dir_noisy)
+            stress_mag_noisy = utils.windToStress(wind_speed_noisy)
+            stress_u_noisy,stress_v_noisy = utils.windToStress(wind_speed_noisy,wind_dir_noisy)
 
-        stress_mag = utils.windToStress(orbit.wind_speed_model.values)
+            stress_mag = utils.windToStress(orbit.wind_speed_model.values)
 
-        stress_mag_error = stress_mag - stress_mag_noisy
-        u_stress_error = orbit.tx_model.values - stress_u_noisy
-        v_stress_error = orbit.ty_model.values - stress_v_noisy
+            stress_mag_error = stress_mag - stress_mag_noisy
+            u_stress_error = orbit.tx_model.values - stress_u_noisy
+            v_stress_error = orbit.ty_model.values - stress_v_noisy
 
-        orbit = orbit.assign({'stress_mag_error': (['along_track', 'cross_track'], stress_mag_error)})
+            orbit = orbit.assign({'stress_mag_error': (['along_track', 'cross_track'], stress_mag_error)})
 
-        orbit = orbit.assign({'stress_u_error': (['along_track', 'cross_track'], u_stress_error),
-                              'stress_v_error': (['along_track', 'cross_track'], v_stress_error)})
-
+            orbit = orbit.assign({'stress_u_error': (['along_track', 'cross_track'], u_stress_error),
+                                  'stress_v_error': (['along_track', 'cross_track'], v_stress_error)})
+            
 
         return orbit
 
