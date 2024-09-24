@@ -149,8 +149,8 @@ class GriddedModel:
 
         u=np.reshape(ds_u[self.u_varname].values,np.shape(lats))
         v=np.reshape(ds_v[self.v_varname].values,np.shape(lats))
-        wx=np.reshape(ds_wx[self.wind].values,np.shape(lats))
-        wy=np.reshape(ds_wx[self.wind].values,np.shape(lats))
+        wx=np.reshape(ds_wx[self.wind_x_varname].values,np.shape(lats))
+        wy=np.reshape(ds_wx[self.wind_y_varname].values,np.shape(lats))
 
         return u,v,wx,wy
         
