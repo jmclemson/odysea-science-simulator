@@ -27,7 +27,8 @@ class GriddedModel:
     def __init__(self,model_folder='/u/bura-m0/hectorg/COAS/llc2160/HighRes/',
                  u_folder='U',v_folder='V',current_fname=None,wind_x_folder='oceTAUX',wind_y_folder='oceTAUY',
                  wind_fname=None,u_varname='U',v_varname='V',wind_x_varname='oceTAUX',wind_y_varname='oceTAUY',
-                 variable_selector='winds+currents',wind_var='speed',search_string = '/*.nc',preprocess=None,n_files=-1):
+                 variable_selector='winds+currents',wind_var='stress',search_string = '/*.nc',preprocess=None,n_files=-1,
+                 tau_x_folder=None,tau_y_folder=None,tau_x_varname=None,tau_y_varname=None):
 
         """
         Initialize a GriddedModel object.
@@ -49,12 +50,27 @@ class GriddedModel:
             variable_selector (str): String indicating which variables are present in model data.
                 - Include sub-string "wind" to load wind model data.
                 - Include sub-string "current" to load current model data.
+            tau_x_folder (str): Legacy argument pointing to wind_x_folder
+            tau_y_folder (str): Legacy argument pointing to wind_y_folder
+            tau_x_varname (str): Legacy argument pointing to wind_x_varname
+            tau_y_varname (str): Legacy argument pointing to wind_y_varname
             
         Returns:
             GriddedModel obect
 
         """
 
+        if tau_x_folder is not None:
+            wind_x_folder = tau_x_folder
+
+        if tau_y_folder is not None:
+            wind_y_folder = tau_y_folder
+
+        if tau_x_varname is not None:
+            wind_x_varname = tau_x_varname
+
+        if tau_y_varname is not None:
+            wind_y_varname = tau_x_varname
 
         if 'current' in variable_selector:
             if n_files == 'combined':
